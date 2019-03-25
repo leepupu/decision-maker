@@ -1,29 +1,451 @@
 <!doctype html>
-<html>
-  <head>
-    <title>Getting Started</title>
-  </head>
-  <body>
-    <div id="dekusan">
-      <a href="https://dexon.org/faucet">Download DekuSan</a>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+  <title>Hello, world!</title>
+</head>
+
+<body>
+  <div class="container">
+    <div class="row">
+      <h1>Decision Maker</h1>
     </div>
+    <div class="row">
+        <div class="col-md-12">
+          Prepare: install <a href="https://chrome.google.com/webstore/detail/dekusan/anlicggbddjeebblaidciapponbpegoj?hl=zh-TW">DekuSan</a>, create accounts and get test DXN from <a href="https://dexon.org/faucet">here</a>
+          <pre>
 
-    <div id="wallet-network"></div>
-
-    <br />
-
-    <div id="wallet-address"></div>
-    <div id="wallet-balance"></div>
-
-    <br />
-
-    <div id="contract-value"></div>
-
-    <br />
-
-    <div>
-      <button id="update-button">Update Contract Value</button>
+          Usage:
+          1. deploy contract or address contract
+          2. Make sure contract instance is active
+          3. As contract owner, set how many decision you want to make a choise and how mush $ in each choices
+          4. Wait players to add chips for choices, more value, more chance
+          5. As contract owner, click Make Decision button to make final decision based on chips player donate, and get all chips transfer to address of owner
+          Example scenario:
+          As a LOL(legend of league) streamer, for each round I can start a Decision Maker to decide which champions I'll play.
+          </pre>
+        </div>
+      </div>
+    <div class="row">
+      <div class="col-md-12">
+        Address: <span id="current-address"></span><br />
+        Balance: <span id="current-balance"></span><br />
+      </div>
     </div>
-    <script src="bundle.js"></script>
-  </body>
+    <div class="row">
+      <div class="col-md-12">
+        <h2>CHOOSE HOW TO USE</h2>
+        <div class="btn btn-primary" id="create-new">Deploy New Contrat</div> </br>
+        OR </br>
+        <div class="btn btn-primary" id="address-exist">Address Exist Contrat</div> <input type="test" value="0xbA14eE00a69255813A98fac4f475Bf413a9e1750" id="address-exist-contract">
+      </div>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-md-12">
+          <h2> Contract Inst Address: <span id="contract-inst-address"></span></h2>
+          <div class="btn btn-info" id="contract-is-active">1. Is Active</div> <br/> <br/>
+          <div class="btn btn-info" id="contract-set-decision">2. Decide how many choises to decision(Use owner wallet account)</div> <input id="init-decisions-count" type="number" value="5" /> and initially how much in each choice(unit in DXN): <input id="init-money" type="number" value="0.0005" /> <span id="log1"></span> <br/> <br/>
+          <div class="btn btn-info" id="contract-check-decision">3. Check how many choise exist</div> <br/> <br/>
+          <div class="btn btn-info" id="contract-add-chips">4. Give contract to others to add cips(money) for choice you want(Use other wallet account)</div> Choice(1~<span id="current-decision-count-max"></span>):<input id="chips-to-add" type="number" value="1">, add money: <input id="chips-amount" type="number" value="0.0001" /> <br/> <br/>
+          <span id="log2"></span>
+          <div class="btn btn-info" id="contract-get-balance">5. Check how many chips for this decision maker</div>  <br/> <br/>
+          <div class="btn btn-info" id="contract-make-decision">6. As owner, make final decision and collect all money in contract(Use owner wallet account)</div>  <br/> <br/>
+          <div class="btn btn-info" id="contract-check-final">7. Check Final Decision</div>  <br/> <br/>
+          <span id="log3"></span>
+          <h1> Final Decision Is: <span id="final"></span></h1>
+        </div>
+      </div>
+  </div>
+
+
+  <!-- Optional JavaScript -->
+  <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js"
+    integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+    integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+    crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+    integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+    crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.0.0-beta.36/dist/web3.min.js"
+    integrity="sha256-nWBTbvxhJgjslRyuAKJHK+XcZPlCnmIAAMixz6EefVk="
+    crossorigin="anonymous"></script>
+  <script>
+    let currentAddress = '';
+    let contractInst = null;
+    const contractMetaData =  {"contractName": "DecisionMaker",
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "decisionsCount",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint32"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function",
+      "signature": "0x027652db"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "active",
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function",
+      "signature": "0x02fb0c5e"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "bankTotal",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function",
+      "signature": "0x287ae0c7"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "value",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function",
+      "signature": "0x3fa4f245"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "rangeRand",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function",
+      "signature": "0x5523feec"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function",
+      "signature": "0x8da5cb5b"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "finalDecision",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint32"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function",
+      "signature": "0xd474b9ce"
+    },
+    {
+      "inputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "constructor",
+      "signature": "constructor"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "update",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function",
+      "signature": "0xa2e62045"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "get",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function",
+      "signature": "0x6d4ce63c"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "c",
+          "type": "uint32"
+        },
+        {
+          "name": "init",
+          "type": "uint256"
+        }
+      ],
+      "name": "setDecisionsCount",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function",
+      "signature": "0x0a825f7c"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "decision",
+          "type": "uint32"
+        }
+      ],
+      "name": "addChip",
+      "outputs": [],
+      "payable": true,
+      "stateMutability": "payable",
+      "type": "function",
+      "signature": "0xa47124a3"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "getFinalDecision",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint32"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function",
+      "signature": "0x6ee9646f"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "makeDecision",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint32"
+        }
+      ],
+      "payable": true,
+      "stateMutability": "payable",
+      "type": "function",
+      "signature": "0xd116f96e"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b5033600360006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506001600560006101000a81548160ff02191690831515021790555061080b8061007c6000396000f3fe6080604052600436106100bf576000357c010000000000000000000000000000000000000000000000000000000090048063027652db146100c457806302fb0c5e146100fb5780630a825f7c1461012a578063287ae0c7146101755780633fa4f245146101a05780635523feec146101cb5780636d4ce63c146101f65780636ee9646f146102215780638da5cb5b14610258578063a2e62045146102af578063a47124a3146102c6578063d116f96e146102fa578063d474b9ce14610324575b600080fd5b3480156100d057600080fd5b506100d961035b565b604051808263ffffffff1663ffffffff16815260200191505060405180910390f35b34801561010757600080fd5b50610110610371565b604051808215151515815260200191505060405180910390f35b34801561013657600080fd5b506101736004803603604081101561014d57600080fd5b81019080803563ffffffff16906020019092919080359060200190929190505050610384565b005b34801561018157600080fd5b5061018a610474565b6040518082815260200191505060405180910390f35b3480156101ac57600080fd5b506101b561047a565b6040518082815260200191505060405180910390f35b3480156101d757600080fd5b506101e0610480565b6040518082815260200191505060405180910390f35b34801561020257600080fd5b5061020b610486565b6040518082815260200191505060405180910390f35b34801561022d57600080fd5b5061023661048f565b604051808263ffffffff1663ffffffff16815260200191505060405180910390f35b34801561026457600080fd5b5061026d6104a9565b604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200191505060405180910390f35b3480156102bb57600080fd5b506102c46104cf565b005b6102f8600480360360208110156102dc57600080fd5b81019080803563ffffffff1690602001909291905050506104d8565b005b610302610588565b604051808263ffffffff1663ffffffff16815260200191505060405180910390f35b34801561033057600080fd5b50610339610753565b604051808263ffffffff1663ffffffff16815260200191505060405180910390f35b600160009054906101000a900463ffffffff1681565b600560009054906101000a900460ff1681565b600360009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16141561047057600560009054906101000a900460ff161561046f5760008263ffffffff1611151561040157fe5b81600160006101000a81548163ffffffff021916908363ffffffff16021790555060008090505b8263ffffffff168163ffffffff16101561046d5781600460008363ffffffff1663ffffffff168152602001908152602001600020819055508080600101915050610428565b505b5b5050565b60025481565b60005481565b60065481565b60008054905090565b6000600160049054906101000a900463ffffffff16905090565b600360009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b2f600081905550565b600560009054906101000a900460ff16156105855760006104fa826001610769565b9050600160009054906101000a900463ffffffff1663ffffffff168163ffffffff1610151561052557fe5b61054e34600460008463ffffffff1663ffffffff16815260200190815260200160002054610797565b600460008363ffffffff1663ffffffff1681526020019081526020016000208190555061057d34600254610797565b600281905550505b50565b6000600360009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16141561075057600560009054906101000a900460ff161561074e576000600560006101000a81548160ff02191690831515021790555060006002542f81151561061f57fe5b06905080600681905550600080600090505b600160009054906101000a900463ffffffff1663ffffffff168163ffffffff1610156107425761068082600460008463ffffffff1663ffffffff16815260200190815260200160002054610797565b91508183101561073557600360009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff166108fc6002549081150290604051600060405180830381858888f193505050501580156106f4573d6000803e3d6000fd5b506107008160016107b5565b600160046101000a81548163ffffffff021916908363ffffffff16021790555061072b8160016107b5565b935050505061074f565b8080600101915050610631565b5060009250505061074f565b5b5b90565b600160049054906101000a900463ffffffff1681565b60008263ffffffff168263ffffffff161115151561078657600080fd5b600082840390508091505092915050565b60008082840190508381101515156107ab57fe5b8091505092915050565b60008082840190508363ffffffff168163ffffffff16101515156107d557fe5b809150509291505056fea165627a7a72305820631ed34ebfb293d78ea81fd39d9050b630ad671c37cb625fec4cd828f235aa370029",
+  }
+
+    function startInteractingWithWeb3(web3) {
+      const contractHandlerHelloWorld = new web3.eth.Contract(
+        contractMetaData.abi,
+        contractMetaData.networks[network_id].address
+      )
+    }
+
+    function updateBalance(web3) {
+      web3.eth.getBalance($('#current-address').text())
+        .then((s) => {
+          $('#current-balance').text(web3.utils.fromWei(s));
+        });
+    }
+
+
+    $(document).ready(async () => {
+
+      const provider = window.dexon;
+
+      /* Ask User's permission with a popup */
+      await provider.enable();
+
+      /*
+      * Initiate a web3 instance with provider.
+      * In this case, we are using `window.dexon`
+      * window.dexon as a provider is injected
+      * when you enable Dekusan wallet as extension
+      */
+      const web3 = new Web3();
+      web3.setProvider(window.dexon);
+      // startInteractingWithWeb3(web3);
+
+      window.web3 = web3;
+
+      setInterval(() => {
+        web3.eth.getAccounts()
+        .then((data) => {
+          if (data.length === 0) {
+            $('#current-address').text('no wallet avaliable');
+          } else {
+            currentAddress = data[0];
+            $('#current-address').text(currentAddress);
+            updateBalance(web3);
+          }
+        });
+      }, 1000);
+
+
+      $('#create-new').click(() => {
+        window.c = new web3.eth.Contract(contractMetaData.abi);
+        c.deploy({data: contractMetaData.bytecode})
+          .send({
+            from: currentAddress,
+            gas: 6721975 * 3,
+            gasPrice: '20000000000'
+          }, (error, transactionHash) => {
+            if(error) alert(error);
+            console.log('tx', transactionHash);
+          })
+          .then((newContractInstance) => {
+              console.log(newContractInstance.options.address) // instance with the new contract address
+              $('#contract-inst-address').text(newContractInstance.options.address);
+              contractInst = newContractInstance;
+          });
+      })
+      $('#contract-is-active').click(() => {
+        if(!contractInst) { alert('contract inst not found'); return; }
+        // contractInst.methods
+        contractInst.methods.active().call().then(alert);
+      });
+
+      $("#address-exist").click(() => {
+        const adr = $("#address-exist-contract").val();
+        $('#contract-inst-address').text(adr);
+        contractInst = new web3.eth.Contract(contractMetaData.abi, adr);
+        getFinal();
+      })
+
+      $("#contract-set-decision").click(() => {
+        if(!contractInst) { alert('contract inst not found'); return; }
+        const init = web3.utils.toWei($("#init-money").val());
+        const c = $("#init-decisions-count").val();
+        console.log(init, c);
+        contractInst.methods.setDecisionsCount(c, init)
+          .send({
+            from: currentAddress,
+            gasPrice: '20000000000',
+          })
+          .then(rst => {
+            $("#log1").text(`tx: ${rst.transactionHash}`);
+            console.log(rst.transactionHash);
+          })
+      });
+
+      $("#contract-check-decision").click(() => {
+        if(!contractInst) { alert('contract inst not found'); return; }
+        contractInst.methods.decisionsCount().call()
+          .then((s) => {
+            $("#current-decision-count-max").text(s);
+            alert(s);
+          });
+      });
+
+      $("#contract-add-chips").click(() => {
+        if(!contractInst) { alert('contract inst not found'); return; }
+        const chips = web3.utils.toWei($("#chips-amount").val());
+        console.log(chips);
+        const d = $("#chips-to-add").val();
+        contractInst.methods.addChip(d)
+          .send({
+            from: currentAddress,
+            gasPrice: '20000000000',
+            value: chips,
+          })
+          .then(rst => {
+            $("#log2").text(`tx: ${rst.transactionHash}`);
+            console.log(rst.transactionHash);
+          });
+      });
+
+      $("#contract-get-balance").click(() => {
+        if(!contractInst) { alert('contract inst not found'); return; }
+        contractInst.methods.bankTotal().call()
+          .then((s) => {
+            alert(s);
+          });
+      });
+
+      function getFinal() {
+        if(!contractInst) { alert('contract inst not found'); return; }
+        contractInst.methods.finalDecision().call()
+          .then(data => {
+            $("#final").text(data);
+          });
+      }
+
+      $("#contract-make-decision").click(() => {
+        if(!contractInst) { alert('contract inst not found'); return; }
+        contractInst.methods.makeDecision()
+          .send({
+            from: currentAddress,
+            gasPrice: '20000000000',
+          })
+          .then(rst => {
+            $("#log3").text(`tx: ${rst.transactionHash}`);
+            console.log(rst.transactionHash);
+            getFinal();
+          });
+      });
+
+      $("#contract-check-final").click(() => {
+        getFinal();
+      });
+
+    });
+  </script>
+</body>
+
 </html>
